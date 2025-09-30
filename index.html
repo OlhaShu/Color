@@ -1,330 +1,885 @@
-import React, { useState, useEffect } from 'react';
-import { Palette, Heart, Zap, Sun, Moon, Droplet, Wind, Cloud, Flame, Sparkles, Star, CloudRain, Coffee, Ghost, Smile, Frown, Angry, Meh, Music } from 'lucide-react';
-
-const ColorHarmonyTrainer = () => {
-  const [baseColor, setBaseColor] = useState('#FF6B6B');
-  const [harmonyType, setHarmonyType] = useState('complementary');
-  const [selectedEmotion, setSelectedEmotion] = useState('');
-  const [hoveredColor, setHoveredColor] = useState(null);
-  const [category, setCategory] = useState('emotions');
-
-  const colorData = {
-    emotions: [
-      { name: 'Радість', color: '#FFD93D', icon: Sun, desc: 'Яскравість, оптимізм, щастя' },
-      { name: 'Спокій', color: '#6BCB77', icon: Droplet, desc: 'Гармонія, баланс, умиротворення' },
-      { name: 'Пристрасть', color: '#FF6B6B', icon: Heart, desc: 'Інтенсивність, любов, емоційність' },
-      { name: 'Енергія', color: '#FF8C42', icon: Zap, desc: 'Динаміка, активність, рух' },
-      { name: 'Таємниця', color: '#6C5CE7', icon: Moon, desc: 'Загадковість, глибина, інтрига' },
-      { name: 'Меланхолія', color: '#4A5568', icon: CloudRain, desc: 'Сум, задумливість, ностальгія' },
-      { name: 'Натхнення', color: '#FF69B4', icon: Sparkles, desc: 'Творчість, мрії, уява' },
-      { name: 'Тривога', color: '#8B4513', icon: Frown, desc: 'Напруга, хвилювання, занепокоєння' },
-    ],
-    moods: [
-      { name: 'Романтика', color: '#FFB6C1', icon: Heart, desc: 'М\'які рожеві відтінки, ніжність' },
-      { name: 'Драма', color: '#8B0000', icon: Flame, desc: 'Темні червоні, напруга, конфлікт' },
-      { name: 'Комедія', color: '#FFA500', icon: Smile, desc: 'Яскраві, веселі, життєрадісні тони' },
-      { name: 'Трилер', color: '#1C1C1C', icon: Ghost, desc: 'Темні тони, напруга, саспенс' },
-      { name: 'Фентезі', color: '#9370DB', icon: Star, desc: 'Магічні, казкові відтінки' },
-      { name: 'Нуар', color: '#2F4F4F', icon: Cloud, desc: 'Сірі, чорні, приглушені тони' },
-      { name: 'Вестерн', color: '#D2691E', icon: Coffee, desc: 'Земляні, пустельні кольори' },
-      { name: 'Sci-Fi', color: '#00CED1', icon: Sparkles, desc: 'Неонові, футуристичні тони' },
-    ],
-    characters: [
-      { name: 'Герой', color: '#4169E1', icon: Star, desc: 'Благородний синій, надійність' },
-      { name: 'Лиходій', color: '#800080', icon: Angry, desc: 'Темний пурпур, владність' },
-      { name: 'Наставник', color: '#2E8B57', icon: Coffee, desc: 'Мудрий зелений, досвід' },
-      { name: 'Комік', color: '#FFD700', icon: Music, desc: 'Веселий жовтий, життєрадісність' },
-      { name: 'Трагічний', color: '#483D8B', icon: Frown, desc: 'Глибокий синій, меланхолія' },
-      { name: 'Загадковий', color: '#4B0082', icon: Moon, desc: 'Індиго, таємничість' },
-      { name: 'Невинний', color: '#F0E68C', icon: Sun, desc: 'Світлий, чистий, наївність' },
-      { name: 'Бунтар', color: '#DC143C', icon: Flame, desc: 'Червоний, пристрасть, непокора' },
-    ]
-  };
-
-  const hslToHex = (h, s, l) => {
-    l /= 100;
-    const a = s * Math.min(l, 1 - l) / 100;
-    const f = n => {
-      const k = (n + h / 30) % 12;
-      const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-      return Math.round(255 * color).toString(16).padStart(2, '0');
-    };
-    return `#${f(0)}${f(8)}${f(4)}`;
-  };
-
-  const hexToHSL = (hex) => {
-    const r = parseInt(hex.slice(1, 3), 16) / 255;
-    const g = parseInt(hex.slice(3, 5), 16) / 255;
-    const b = parseInt(hex.slice(5, 7), 16) / 255;
-
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-    let h, s, l = (max + min) / 2;
-
-    if (max === min) {
-      h = s = 0;
-    } else {
-      const d = max - min;
-      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-      switch (max) {
-        case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
-        case g: h = ((b - r) / d + 2) / 6; break;
-        case b: h = ((r - g) / d + 4) / 6; break;
-      }
-    }
-
-    return { h: h * 360, s: s * 100, l: l * 100 };
-  };
-
-  const getColorInfo = (hex) => {
-    const { h, s, l } = hexToHSL(hex);
-    const temp = h < 60 || h > 240 ? 'Теплий' : 'Холодний';
-    const brightness = l > 50 ? 'Світлий' : 'Темний';
-    const saturation = s > 60 ? 'Насичений' : s > 30 ? 'Помірний' : 'Приглушений';
-    
-    let mood = '';
-    if (h >= 0 && h < 30) mood = 'Енергійний, пристрасний';
-    else if (h >= 30 && h < 60) mood = 'Радісний, оптимістичний';
-    else if (h >= 60 && h < 150) mood = 'Спокійний, природний';
-    else if (h >= 150 && h < 210) mood = 'Свіжий, прохолодний';
-    else if (h >= 210 && h < 270) mood = 'Довірливий, стабільний';
-    else if (h >= 270 && h < 330) mood = 'Креативний, духовний';
-    else mood = 'Палкий, сміливий';
-
-    return { temp, brightness, saturation, mood, h: Math.round(h), s: Math.round(s), l: Math.round(l) };
-  };
-
-  const generateHarmony = (baseHex, type) => {
-    const { h, s, l } = hexToHSL(baseHex);
-    const colors = [baseHex];
-
-    switch (type) {
-      case 'complementary':
-        colors.push(hslToHex((h + 180) % 360, s, l));
-        break;
-      case 'triadic':
-        colors.push(hslToHex((h + 120) % 360, s, l));
-        colors.push(hslToHex((h + 240) % 360, s, l));
-        break;
-      case 'analogous':
-        colors.push(hslToHex((h + 30) % 360, s, l));
-        colors.push(hslToHex((h - 30 + 360) % 360, s, l));
-        break;
-      case 'split-complementary':
-        colors.push(hslToHex((h + 150) % 360, s, l));
-        colors.push(hslToHex((h + 210) % 360, s, l));
-        break;
-      case 'tetradic':
-        colors.push(hslToHex((h + 90) % 360, s, l));
-        colors.push(hslToHex((h + 180) % 360, s, l));
-        colors.push(hslToHex((h + 270) % 360, s, l));
-        break;
-      case 'monochromatic':
-        colors.push(hslToHex(h, s, Math.min(l + 20, 90)));
-        colors.push(hslToHex(h, s, Math.max(l - 20, 10)));
-        break;
-    }
-
-    return colors;
-  };
-
-  const harmonies = generateHarmony(baseColor, harmonyType);
-
-  const harmonyTypes = [
-    { value: 'complementary', label: 'Комплементарна', desc: '2 протилежні кольори' },
-    { value: 'analogous', label: 'Аналогова', desc: 'Сусідні кольори' },
-    { value: 'triadic', label: 'Тріадична', desc: '3 рівновіддалені кольори' },
-    { value: 'split-complementary', label: 'Розщеплена комплементарна', desc: 'База + 2 сусіди протилежного' },
-    { value: 'tetradic', label: 'Тетрадична', desc: '4 кольори - 2 пари' },
-    { value: 'monochromatic', label: 'Монохроматична', desc: 'Відтінки одного кольору' },
-  ];
-
-  const categories = [
-    { value: 'emotions', label: 'Емоції' },
-    { value: 'moods', label: 'Настрої в кіно' },
-    { value: 'characters', label: 'Типи персонажів' },
-  ];
-
-  const currentData = colorData[category];
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-3 mb-3">
-            <Palette className="w-10 h-10 text-purple-300" />
-            <h1 className="text-4xl font-bold text-white">Тренажер колірних гармоній</h1>
-          </div>
-          <p className="text-purple-200">Досліджуйте емоції, настрої та персонажів через кольори</p>
-        </div>
-
-        {/* Категорії */}
-        <div className="flex justify-center gap-3 mb-6">
-          {categories.map((cat) => (
-            <button
-              key={cat.value}
-              onClick={() => {
-                setCategory(cat.value);
-                setSelectedEmotion('');
-              }}
-              className={`px-6 py-3 rounded-xl font-semibold transition-all ${
-                category === cat.value
-                  ? 'bg-purple-500 text-white shadow-lg scale-105'
-                  : 'bg-white/10 text-purple-200 hover:bg-white/20'
-              }`}
-            >
-              {cat.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Емоції/Настрої/Персонажі */}
-        <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 mb-6">
-          <h2 className="text-xl font-semibold text-white mb-4">
-            {category === 'emotions' && 'Оберіть емоцію'}
-            {category === 'moods' && 'Оберіть настрій фільму'}
-            {category === 'characters' && 'Оберіть тип персонажа'}
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {currentData.map((item) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.name}
-                  onClick={() => {
-                    setSelectedEmotion(item.name);
-                    setBaseColor(item.color);
-                  }}
-                  className={`p-4 rounded-xl transition-all transform hover:scale-105 relative group ${
-                    selectedEmotion === item.name
-                      ? 'ring-4 ring-white scale-105'
-                      : 'hover:ring-2 ring-white/50'
-                  }`}
-                  style={{ backgroundColor: item.color }}
-                >
-                  <Icon className="w-8 h-8 mx-auto mb-2 text-white drop-shadow-lg" />
-                  <p className="font-semibold text-white drop-shadow">{item.name}</p>
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-black/90 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
-                    {item.desc}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Базовий колір */}
-          <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6">
-            <h2 className="text-xl font-semibold text-white mb-4">Базовий колір</h2>
-            <div 
-              className="w-full h-48 rounded-xl mb-4 shadow-2xl cursor-pointer transition-transform hover:scale-105 relative group"
-              style={{ backgroundColor: baseColor }}
-              onClick={() => document.getElementById('colorPicker').click()}
-              onMouseEnter={() => setHoveredColor(baseColor)}
-              onMouseLeave={() => setHoveredColor(null)}
-            >
-              {hoveredColor === baseColor && (
-                <div className="absolute inset-0 bg-black/80 rounded-xl p-4 text-white text-sm">
-                  <p className="font-bold mb-2">Інформація про колір:</p>
-                  <p>• {getColorInfo(baseColor).temp} тон</p>
-                  <p>• {getColorInfo(baseColor).brightness}</p>
-                  <p>• {getColorInfo(baseColor).saturation}</p>
-                  <p>• Настрій: {getColorInfo(baseColor).mood}</p>
-                  <p className="mt-2 font-mono text-xs">
-                    HSL({getColorInfo(baseColor).h}°, {getColorInfo(baseColor).s}%, {getColorInfo(baseColor).l}%)
-                  </p>
-                </div>
-              )}
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Колірний Майстер - Тренажер гармоній</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+                
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+                
+        body {
+            overflow-x: hidden;
+            /* ЗМІНА ДЛЯ ЗОРУ: Використовуємо статичний, м'який, темно-сірий фон замість анімованого градієнта, щоб зменшити напругу очей та уникнути мерехтіння. */
+            background-color: #1A202C; 
+        }
+                
+        /* ВИДАЛЕННЯ: Усі стилі та анімації .gradient-bg та keyframes, які викликають втому очей */
+        
+        .glass-card {
+            /* Адаптація до темного фону: використовуємо прозорий темно-сірий, щоб елементи були помітнішими, але без сильного блиску білого. */
+            background: rgba(45, 55, 72, 0.6); 
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+                
+        .glass-card:hover {
+            background: rgba(45, 55, 72, 0.8);
+            transform: translateY(-2px); /* Зменшено підйом, щоб бути менш агресивним */
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+        }
+                
+        .color-card {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+                
+        .color-card::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, transparent 0%, rgba(255,255,255,0.2) 50%, transparent 100%);
+            transform: translateX(-100%) translateY(-100%);
+            transition: transform 0.6s;
+        }
+                
+        .color-card:hover::after {
+            transform: translateX(100%) translateY(100%);
+        }
+                
+        .color-card:hover {
+            transform: scale(1.08) translateY(-4px);
+            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
+            z-index: 10;
+        }
+                
+        .btn-primary {
+            /* Зміна градієнта кнопки: приглушений градієнт, який краще вписується в темну тему */
+            background: linear-gradient(135deg, #4A5568 0%, #2D3748 100%);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+                
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%);
+            transform: translateX(-100%);
+            transition: transform 0.6s;
+        }
+                
+        .btn-primary:hover::before {
+            transform: translateX(100%);
+        }
+                
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+        }
+                
+        .color-info-overlay {
+            background: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.95) 100%);
+        }
+                
+        .role-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: rgba(255, 255, 255, 0.9);
+            color: #1a202c;
+            margin-top: 0.5rem;
+        }
+                
+        .usage-bar {
+            height: 8px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.3);
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+                
+        .usage-fill {
+            height: 100%;
+            /* Залишаємо оригінальний акцентний градієнт для заповнення, але він вимагатиме уваги */
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+                
+        input[type="color"] {
+            appearance: none;
+            width: 100%;
+            height: 70px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+                
+        input[type="color"]:hover {
+            transform: scale(1.05);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+        }
+                
+        input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+                
+        input[type="color"]::-webkit-color-swatch {
+            border: none;
+            border-radius: 16px;
+        }
+                
+        .pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+                
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+                
+        .fade-in {
+            animation: fadeIn 0.6s ease-out;
+        }
+                
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+                
+        .info-panel {
+            /* Пристосовуємо панель до темного режиму */
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 100%);
+            border-left: 4px solid #667eea; /* Акцентний колір */
+            padding: 1rem;
+            border-radius: 12px;
+            margin-top: 1rem;
+        }
+        
+        .harmony-type-btn.selected {            
+            box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.8), 0 0 10px #764ba2; /* Зміна акцентної тіні */
+            border-color: transparent;        
+        }    
+    </style>
+</head>
+<body class="min-h-screen"> <!-- ЗМІНА: видаляємо клас gradient-bg -->
+    <div class="container mx-auto px-4 py-8 max-w-7xl relative z-10">
+                <!-- Header -->
+        <header class="text-center mb-12 fade-in">
+            <div class="inline-flex items-center gap-4 mb-4 bg-white/15 backdrop-blur-md px-8 py-4 rounded-full shadow-2xl">
+                <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/>
+                </svg>
+                <h1 class="text-5xl font-black text-white tracking-tight">Колірний Майстер</h1>
             </div>
-            <input
-              id="colorPicker"
-              type="color"
-              value={baseColor}
-              onChange={(e) => {
-                setBaseColor(e.target.value);
-                setSelectedEmotion('');
-              }}
-              className="w-full h-12 rounded-lg cursor-pointer"
-            />
-            <p className="text-center text-white font-mono mt-2 text-lg">{baseColor.toUpperCase()}</p>
-          </div>
+            <p class="text-white/95 text-xl font-medium max-w-3xl mx-auto">Досліджуйте психологію кольору через емоції, кінематограф та персонажів</p>
+            <p class="text-white/70 text-sm mt-2">З підтримкою доступності для всіх</p>
+        </header>
 
-          {/* Тип гармонії */}
-          <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6">
-            <h2 className="text-xl font-semibold text-white mb-4">Тип гармонії</h2>
-            <div className="space-y-2">
-              {harmonyTypes.map((type) => (
-                <button
-                  key={type.value}
-                  onClick={() => setHarmonyType(type.value)}
-                  className={`w-full text-left p-3 rounded-lg transition-all ${
-                    harmonyType === type.value
-                      ? 'bg-purple-500 text-white shadow-lg scale-105'
-                      : 'bg-white/5 text-purple-100 hover:bg-white/10'
-                  }`}
-                >
-                  <div className="font-semibold">{type.label}</div>
-                  <div className="text-sm opacity-80">{type.desc}</div>
-                </button>
-              ))}
+        <!-- Categories -->
+        <div class="glass-card rounded-3xl p-6 mb-8 fade-in">
+            <div class="flex flex-wrap justify-center gap-4" id="categories"></div>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="grid lg:grid-cols-3 gap-8">
+                        <!-- Left Column: Color Selection -->
+            <div class="lg:col-span-2 space-y-8">
+                                <!-- Color Items -->
+                <div class="glass-card rounded-3xl p-8 fade-in">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-3xl font-bold text-white" id="items-title">Оберіть емоцію</h2>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-5" id="color-items"></div>
+                </div>
+
+                <!-- Harmony Palette with Usage Ratios -->
+                <div class="glass-card rounded-3xl p-8 fade-in">
+                    <h2 class="text-3xl font-bold text-white mb-6">Гармонійна палітра</h2>
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-5" id="harmony-palette"></div>
+                                        <div class="info-panel mt-6">
+                        <h3 class="text-white font-bold text-lg mb-3">📊 Правило 60-30-10</h3>
+                        <p class="text-white/90 text-sm mb-4" id="harmony-description"></p>
+                        <div class="space-y-3" id="usage-guide"></div>
+                    </div>
+                </div>
+
+                <!-- Design Examples -->
+                <div class="glass-card rounded-3xl p-8 fade-in">
+                    <h2 class="text-3xl font-bold text-white mb-6">Приклади використання</h2>
+                    <div class="grid md:grid-cols-3 gap-5" id="design-examples"></div>
+                </div>
+
+                <!-- Accessibility Info -->
+                <div class="glass-card rounded-3xl p-8 fade-in">
+                    <h2 class="text-3xl font-bold text-white mb-6">♿ Доступність кольорів</h2>
+                    <div id="accessibility-info"></div>
+                </div>
             </div>
-          </div>
-        </div>
 
-        {/* Результат гармонії */}
-        <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 mt-6">
-          <h2 className="text-xl font-semibold text-white mb-4">Гармонійна палітра</h2>
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-            {harmonies.map((color, idx) => {
-              const info = getColorInfo(color);
-              return (
-                <div key={idx} className="group">
-                  <div
-                    className="h-32 rounded-xl shadow-xl cursor-pointer transition-transform hover:scale-110 relative overflow-hidden"
-                    style={{ backgroundColor: color }}
-                    onClick={() => {
-                      navigator.clipboard.writeText(color);
-                    }}
-                    onMouseEnter={() => setHoveredColor(color)}
-                    onMouseLeave={() => setHoveredColor(null)}
-                  >
-                    {hoveredColor === color && (
-                      <div className="absolute inset-0 bg-black/90 p-2 text-white text-xs flex flex-col justify-center">
-                        <p className="font-bold mb-1">Клікни - копіювати</p>
-                        <p>• {info.temp}</p>
-                        <p>• {info.saturation}</p>
-                        <p>• {info.mood.split(',')[0]}</p>
-                      </div>
-                    )}
-                  </div>
-                  <p className="text-center text-white font-mono mt-2 text-sm">{color.toUpperCase()}</p>
-                  {idx === 0 && <p className="text-center text-purple-300 text-xs mt-1">База</p>}
+            <!-- Right Column: Controls -->
+            <div class="space-y-6">
+                                <!-- Base Color -->
+                <div class="glass-card rounded-3xl p-6 fade-in">
+                    <h2 class="text-2xl font-bold text-white mb-4">Базовий колір</h2>
+                    <div class="space-y-4">
+                        <div class="relative h-56 rounded-2xl overflow-hidden cursor-pointer group shadow-2xl" id="base-color-display">
+                            <div class="absolute inset-0 color-info-overlay opacity-0 group-hover:opacity-100 transition-opacity duration-300 p-5 flex flex-col justify-end text-white">
+                                <p class="text-sm font-semibold mb-3">🖱️ Клікніть для зміни</p>
+                                <div class="text-sm space-y-2" id="color-info"></div>
+                            </div>
+                        </div>
+                        <input type="color" id="color-picker" class="w-full">
+                        <div class="text-center">
+                            <p class="text-3xl font-mono font-black text-white mb-1" id="color-hex"></p>
+                            <p class="text-sm text-white/80" id="color-hsl"></p>
+                        </div>
+                    </div>
                 </div>
-              );
-            })}
-          </div>
-        </div>
 
-        {/* Демонстрація */}
-        <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 mt-6">
-          <h2 className="text-xl font-semibold text-white mb-4">Приклад використання в дизайні</h2>
-          <div className="grid md:grid-cols-3 gap-4">
-            {harmonies.slice(0, 3).map((color, idx) => (
-              <div key={idx} className="rounded-xl overflow-hidden shadow-xl transform transition-transform hover:scale-105">
-                <div className="h-32" style={{ backgroundColor: color }} />
-                <div className="bg-white p-4">
-                  <div className="h-3 rounded mb-2" style={{ backgroundColor: color, opacity: 0.7 }} />
-                  <div className="h-3 rounded w-4/5 mb-2" style={{ backgroundColor: color, opacity: 0.5 }} />
-                  <div className="h-3 rounded w-3/5" style={{ backgroundColor: color, opacity: 0.3 }} />
+                <!-- Harmony Type -->
+                <div class="glass-card rounded-3xl p-6 fade-in">
+                    <h2 class="text-2xl font-bold text-white mb-4">Тип гармонії</h2>
+                    <div class="space-y-3" id="harmony-types"></div>
                 </div>
-              </div>
-            ))}
-          </div>
+
+                <!-- Psychology Insight -->
+                <div class="glass-card rounded-3xl p-6 fade-in">
+                    <h3 class="text-xl font-bold text-white mb-3">🧠 Психологія</h3>
+                    <div class="text-sm text-white/90 leading-relaxed" id="psychology-info"></div>
+                </div>
+
+                <!-- Quick Tips -->
+                <div class="glass-card rounded-3xl p-6 fade-in">
+                    <h3 class="text-xl font-bold text-white mb-3">💡 Швидкі підказки</h3>
+                    <ul class="text-sm text-white/90 space-y-2 leading-relaxed">
+                        <li>• Клікніть на колір щоб скопіювати HEX</li>
+                        <li>• Наведіть курсор для деталей</li>
+                        <li>• Експериментуйте з гармоніями</li>
+                        <li>• Перевіряйте контраст для доступності</li>
+                    </ul>
+                </div>
+            </div>
         </div>
-      </div>
     </div>
-  );
-};
 
-export default ColorHarmonyTrainer;
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-8 right-8 bg-white text-gray-800 px-6 py-4 rounded-2xl shadow-2xl transform translate-y-32 transition-transform duration-300 z-50 opacity-0">
+        <p class="font-bold" id="toast-message"></p>
+    </div>
+
+    <script>
+        // --- State Management ---
+        let state = {
+            category: 'emotions',
+            selectedItem: 'Пристрасть',
+            baseColor: '#FF6B6B',
+            harmonyType: 'complementary'
+        };
+
+        // Utility to update state and re-render
+        const setState = (newState) => {
+            state = { ...state, ...newState };
+            renderApp();
+        };
+
+        // --- Data Definitions ---
+        const data = {
+            categories: {
+                emotions: { name: 'Емоції', title: 'Оберіть емоцію' },
+                moods: { name: 'Кіно-Сцени', title: 'Оберіть кіно-настрій' },
+                characters: { name: 'Персонажі', title: 'Оберіть архетип' }
+            },
+            emotions: [
+                { name: 'Радість', color: '#FFD93D', icon: '☀️', desc: 'Оптимізм та енергія', rationale: 'Жовтий стимулює серотонін - гормон щастя. Асоціюється з сонцем та інтелектом.', examples: 'Disney, McDonald\'s' },
+                { name: 'Спокій', color: '#6BCB77', icon: '🌿', desc: 'Баланс і гармонія', rationale: 'Зелений знижує тиск та створює відчуття безпеки. Колір природи.', examples: 'Spotify, Starbucks' },
+                { name: 'Пристрасть', color: '#FF6B6B', icon: '❤️', desc: 'Любов та інтенсивність', rationale: 'Червоний підвищує адреналін. Еволюційний сигнал збудження.', examples: 'Coca-Cola, Netflix' },
+                { name: 'Енергія', color: '#FF8C42', icon: '⚡', desc: 'Активність та рух', rationale: 'Оранжевий поєднує енергію червоного з радістю жовтого.', examples: 'Fanta, Nickelodeon' },
+                { name: 'Таємниця', color: '#6C5CE7', icon: '🌙', desc: 'Незвідане та цікавість', rationale: 'Фіолетовий стимулює уяву. Асоціюється з королівською владою.', examples: 'Cadbury, Twitch' },
+                { name: 'Меланхолія', color: '#4A5568', icon: '🌧️', desc: 'Сум та задумливість', rationale: 'Сірий створює професійну атмосферу. Нейтральний та невизначений.', examples: 'Apple' },
+                { name: 'Натхнення', color: '#FF69B4', icon: '✨', desc: 'Творчість та мрії', rationale: 'Рожевий знижує агресію. Символ ніжності та співчуття.', examples: 'Barbie, Victoria\'s Secret' },
+                { name: 'Тривога', color: '#8B4513', icon: '😟', desc: 'Напруга та тиск', rationale: 'Коричневий може викликати відчуття важкості у темних відтінках.', examples: 'UPS' }
+            ],
+            moods: [
+                { name: 'Романтика', color: '#FFB6C1', icon: '💕', desc: 'Ніжність та мрійливість', film: 'Амелі (2001)', rationale: 'М\'які рожеві відтінки створюють інтимну атмосферу з золотистою ностальгією.' },
+                { name: 'Драма', color: '#8B0000', icon: '🔥', desc: 'Високі ставки', film: 'Хрещений батько (1972)', rationale: 'Темно-червоний символізує кров та владу. Контраст створює напругу.' },
+                { name: 'Комедія', color: '#FFA500', icon: '😄', desc: 'Веселість та позитив', film: 'Ла-Ла Ленд (2016)', rationale: 'Насичені кольори викликають радість. Яскравість - безтурботність.' },
+                { name: 'Трилер', color: '#1C1C1C', icon: '👻', desc: 'Ізоляція та загроза', film: 'Сім (1995)', rationale: 'Десатурація створює дискомфорт. Темні тони - відчуття загрози.' },
+                { name: 'Фентезі', color: '#9370DB', icon: '🌟', desc: 'Магічні світи', film: 'Аватар (2009)', rationale: 'Неприродні насичені кольори створюють відчуття іншого світу.' },
+                { name: 'Нуар', color: '#2F4F4F', icon: '☁️', desc: 'Цинізм та двозначність', film: 'Місто гріхів (2005)', rationale: 'Високий контраст. Тіні як символ прихованої правди.' },
+                { name: 'Вестерн', color: '#D2691E', icon: '🤠', desc: 'Простір та виживання', film: 'Хороший, поганий, злий', rationale: 'Теплі земляні тони. Вицвілі кольори створюють історичність.' },
+                { name: 'Sci-Fi', color: '#00CED1', icon: '🚀', desc: 'Футуризм', film: 'Той, що біжить по лезу', rationale: 'Холодні сині та помаранчеві. Неон для технологій.' }
+            ],
+            characters: [
+                { name: 'Герой', color: '#4169E1', icon: '⭐', desc: 'Благородний і надійний', rationale: 'Синій - довіра та стабільність. Архетип захисника.' },
+                { name: 'Лиходій', color: '#800080', icon: '😈', desc: 'Темний і владний', rationale: 'Пурпур - королівська влада та зарозумілість.' },
+                { name: 'Наставник', color: '#2E8B57', icon: '🧙', desc: 'Мудрий і досвідчений', rationale: 'Лісовий зелений - мудрість природи та років.' },
+                { name: 'Комік', color: '#FFD700', icon: '😂', desc: 'Веселий і життєрадісний', rationale: 'Золотий привертає увагу. Асоціюється зі сміхом.' },
+                { name: 'Трагічний', color: '#483D8B', icon: '😔', desc: 'Глибокий і меланхолійний', rationale: 'Темний синій - глибина емоцій та внутрішня боротьба.' },
+                { name: 'Загадковий', color: '#4B0082', icon: '🎭', desc: 'Таємничий', rationale: 'Індиго - між реальністю і уявою. Приховані знання.' },
+                { name: 'Невинний', color: '#F0E68C', icon: '🌸', desc: 'Світлий і наївний', rationale: 'Пастель - чистота, молодість, початок подорожі.' },
+                { name: 'Бунтар', color: '#DC143C', icon: '🔥', desc: 'Пристрасний і непокірний', rationale: 'Яскравий червоний - революція та протест.' }
+            ]
+        };
+        const harmonies = {
+            complementary: { name: 'Комплементарна', desc: 'Протилежні кольори. Максимальний контраст для драми.', example: 'Трон: Спадок', roles: ['60% База', '40% Контраст'], usage: 'База для фону, контраст для ключових елементів.' },
+            analogous: { name: 'Аналогова', desc: 'Сусідні кольори. Гармонійна спокійна атмосфера.', example: 'Великий готель Будапешт', roles: ['60% Домінантний', '30% Підтримка', '10% Акцент'], usage: 'Для фонів та плавних переходів.' },
+            triadic: { name: 'Тріадична', desc: 'Рівновіддалені кольори. Збалансована жива палітра.', example: 'Джокер (2019)', roles: ['60% Основний', '30% Вторинний', '10% Акцент'], usage: 'Кожен колір має окрему функцію.' },
+            'split-complementary': { name: 'Розщеплена', desc: 'База плюс два сусіди протилежного. Цікава та менш напружена.', example: 'Володар перснів', roles: ['60% База', '25% Підтримка 1', '15% Підтримка 2'], usage: 'Для багатих композицій без перевантаження.' },
+            tetradic: { name: 'Тетрадична', desc: 'Дві пари кольорів. Найбагатша схема.', example: 'Віднесені вітром', roles: ['40% Основний', '30% Вторинний', '20% Третинний', '10% Акцент'], usage: 'Для епічних складних сцен.' },
+            monochromatic: { name: 'Монохроматична', desc: 'Відтінки одного кольору. Витончена єдність.', example: 'Матриця', roles: ['60% Середній', '30% Темний', '10% Світлий'], usage: 'Для атмосферного нуару та драми.' }
+        };
+
+        // --- Color Conversion Utilities (Copied and completed from the initial code) ---
+        const hexToHSL = (hex) => {
+            const r = parseInt(hex.slice(1, 3), 16) / 255;
+            const g = parseInt(hex.slice(3, 5), 16) / 255;
+            const b = parseInt(hex.slice(5, 7), 16) / 255;
+            const max = Math.max(r, g, b);
+            const min = Math.min(r, g, b);
+            let h, s, l = (max + min) / 2;
+
+            if (max === min) {
+                h = s = 0;
+            } else {
+                const d = max - min;
+                s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                switch (max) {
+                    case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+                    case g: h = ((b - r) / d + 2) / 6; break;
+                    case b: h = ((r - g) / d + 4) / 6; break;
+                }
+            }
+            return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+        };
+        const hslToHex = (h, s, l) => {
+            l /= 100;
+            s /= 100;
+            const a = s * Math.min(l, 1 - l);
+            const f = n => {
+                const k = (n + h / 30) % 12;
+                const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+                return Math.round(255 * color).toString(16).padStart(2, '0');
+            };
+            return '#' + f(0) + f(8) + f(4);
+        };
+        // --- Harmony Generation Logic (Completed) ---
+        const generateHarmony = (hex, type) => {
+            const hsl = hexToHSL(hex);
+            const h = hsl.h;
+            const s = hsl.s;
+            const l = hsl.l;
+            const colors = [hex];
+
+            switch (type) {
+                case 'complementary':
+                    colors.push(hslToHex((h + 180) % 360, s, l));
+                    break;
+                case 'triadic':
+                    colors.push(hslToHex((h + 120) % 360, s, l));
+                    colors.push(hslToHex((h + 240) % 360, s, l));
+                    break;
+                case 'analogous':
+                    // Central color (base) plus two neighbors
+                    colors.push(hslToHex((h + 30) % 360, s, l));
+                    colors.push(hslToHex((h - 30 + 360) % 360, s, l));
+                    break;
+                case 'split-complementary':
+                    const comp = (h + 180) % 360;
+                    colors.push(hslToHex((comp + 30) % 360, s, l));
+                    colors.push(hslToHex((comp - 30 + 360) % 360, s, l));
+                    break;
+                case 'tetradic':
+                    colors.push(hslToHex((h + 90) % 360, s, l));
+                    colors.push(hslToHex((h + 180) % 360, s, l));
+                    colors.push(hslToHex((h + 270) % 360, s, l));
+                    break;
+                case 'monochromatic':
+                    // Base color + two lighter tints + one darker shade
+                    colors.push(hslToHex(h, s, Math.min(l + 25, 95))); // Lighter 1
+                    colors.push(hslToHex(h, s, Math.min(l + 40, 95))); // Lighter 2
+                    colors.push(hslToHex(h, s, Math.max(l - 25, 10))); // Darker 1
+                    break;
+            }
+            // Ensure maximum 4 colors are returned for clean display
+            return colors.slice(0, 4); 
+        };
+
+        // --- WCAG Accessibility (Contrast) Logic ---
+        // Calculates relative luminance (0 to 1)
+        const getLuminance = (hex) => {
+            let r = parseInt(hex.slice(1, 3), 16) / 255;
+            let g = parseInt(hex.slice(3, 5), 16) / 255;
+            let b = parseInt(hex.slice(5, 7), 16) / 255;
+
+            const correct = (c) => {
+                return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+            };
+
+            const R = correct(r);
+            const G = correct(g);
+            const B = correct(b);
+
+            return 0.2126 * R + 0.7152 * G + 0.0722 * B;
+        };
+        // Calculates contrast ratio (1:1 to 21:1)
+        const getContrastRatio = (color1, color2) => {
+            const L1 = getLuminance(color1);
+            const L2 = getLuminance(color2);
+            const ratio = (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05);
+            return ratio.toFixed(2);
+        };
+        
+        // --- Global Color Constants (FIX for ReferenceError) ---
+        const darkText = '#1A202C'; // Main background color for high-contrast text on light elements
+        const lightText = '#FFFFFF'; // Main text color for high-contrast text on dark elements
+
+        // --- UI Rendering Functions ---
+
+        // Toast Notification
+        const showToast = (message) => {
+            const toastEl = document.getElementById('toast');
+            document.getElementById('toast-message').textContent = message;
+                        
+            // Show toast
+            toastEl.classList.remove('translate-y-32', 'opacity-0');
+            toastEl.classList.add('translate-y-0', 'opacity-100');
+
+            // Hide toast after 3 seconds
+            setTimeout(() => {
+                toastEl.classList.add('translate-y-32', 'opacity-0');
+                toastEl.classList.remove('translate-y-0', 'opacity-100');
+            }, 3000);
+        };
+
+        // Copy utility
+        const copyToClipboard = (text) => {
+            // Using a fallback for environments where navigator.clipboard.writeText is restricted
+            try {
+                const el = document.createElement('textarea');
+                el.value = text;
+                el.setAttribute('readonly', '');
+                el.style.position = 'absolute';
+                el.style.left = '-9999px';
+                document.body.appendChild(el);
+                document.execCommand('copy');
+                document.body.removeChild(el);
+                showToast(`✅ Скопійовано: ${text}`);
+            } catch (err) {
+                showToast('❌ Помилка копіювання');
+            }
+        };
+
+        // Renders Category Tabs
+        const renderCategories = () => {
+            const container = document.getElementById('categories');
+            container.innerHTML = Object.entries(data.categories).map(([key, value]) => {
+                const isSelected = key === state.category;
+                return `
+                    <button 
+                        data-category="${key}"
+                        class="category-btn text-white text-lg font-semibold px-6 py-3 rounded-full transition-all duration-200 
+                        ${isSelected ? 'bg-white/30 backdrop-blur-sm shadow-xl btn-primary' : 'bg-transparent hover:bg-white/10'}"
+                    >
+                        ${value.name}
+                    </button>
+                `;
+            }).join('');
+
+            document.querySelectorAll('.category-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const newCategory = e.currentTarget.getAttribute('data-category');
+                    const firstItem = data[newCategory][0];
+                    setState({
+                        category: newCategory,
+                        selectedItem: firstItem.name,
+                        baseColor: firstItem.color
+                    });
+                });
+            });
+        };
+
+        // Renders Selectable Color Items (Emotions, Moods, Characters)
+        const renderColorItems = () => {
+            const container = document.getElementById('color-items');
+            const itemsTitle = document.getElementById('items-title');
+            const currentData = data[state.category];
+            const title = data.categories[state.category].title;
+            
+            itemsTitle.textContent = title;
+
+            container.innerHTML = currentData.map(item => {
+                const isSelected = item.name === state.selectedItem;
+                const borderColor = isSelected ? state.baseColor : 'transparent';
+                                
+                return `
+                    <div 
+                        data-color="${item.color}"
+                        data-name="${item.name}"
+                        class="color-card rounded-2xl p-4 text-center cursor-pointer flex flex-col items-center justify-center h-32" 
+                        style="background-color: ${item.color}; border: 4px solid ${borderColor};"
+                    >
+                        <span class="text-4xl" role="img" aria-label="${item.name}">${item.icon}</span>
+                        <p class="font-bold text-sm mt-1 text-gray-900 drop-shadow-lg" style="color: ${getLuminance(item.color) > 0.4 ? darkText : lightText};">
+                            ${item.name}
+                        </p>
+                    </div>
+                `;
+            }).join('');
+
+            document.querySelectorAll('.color-card').forEach(card => {
+                card.addEventListener('click', (e) => {
+                    const color = e.currentTarget.getAttribute('data-color');
+                    const name = e.currentTarget.getAttribute('data-name');
+                    setState({ baseColor: color, selectedItem: name });
+                });
+            });
+        };
+
+        // Renders Harmony Type Buttons
+        const renderHarmonyTypes = () => {
+            const container = document.getElementById('harmony-types');
+            container.innerHTML = Object.entries(harmonies).map(([key, value]) => {
+                const isSelected = key === state.harmonyType;
+                return `
+                    <button 
+                        data-harmony="${key}"
+                        class="harmony-type-btn w-full text-white text-base font-medium px-4 py-3 rounded-xl border border-white/20 transition-all duration-200 
+                        ${isSelected ? 'selected btn-primary' : 'bg-white/10 hover:bg-white/20'}"
+                    >
+                        ${value.name}
+                    </button>
+                `;
+            }).join('');
+
+            document.querySelectorAll('.harmony-type-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const newHarmony = e.currentTarget.getAttribute('data-harmony');
+                    setState({ harmonyType: newHarmony });
+                });
+            });
+        };
+
+        // Renders the Base Color Display and Controls
+        const renderBaseColorDisplay = () => {
+            const { baseColor } = state;
+            const display = document.getElementById('base-color-display');
+            const colorPicker = document.getElementById('color-picker');
+            const colorHex = document.getElementById('color-hex');
+            const colorHsl = document.getElementById('color-hsl');
+            const colorInfo = document.getElementById('color-info');
+            const hsl = hexToHSL(baseColor);
+                        
+            // Update Visuals
+            display.style.backgroundColor = baseColor;
+            colorPicker.value = baseColor;
+            colorHex.textContent = baseColor.toUpperCase();
+            colorHsl.textContent = `HSL(${hsl.h}, ${hsl.s}%, ${hsl.l}%)`;
+
+            // Setup click to copy for the HEX display
+            colorHex.onclick = () => copyToClipboard(baseColor.toUpperCase());
+
+            // Get current item data for hover info
+            const currentItem = data[state.category].find(item => item.name === state.selectedItem);
+            if (currentItem) {
+                const infoHtml = `
+                    <p>Назва: <span class="font-bold">${currentItem.name}</span></p>
+                    <p>${currentItem.desc}</p>
+                    ${currentItem.film ? `<p>Кіно-приклад: ${currentItem.film}</p>` : ''}
+                    ${currentItem.examples ? `<p>Бренди: ${currentItem.examples}</p>` : ''}
+                `;
+                colorInfo.innerHTML = infoHtml;
+            } else { 
+                 colorInfo.innerHTML = `<p class="font-bold">Власний колір</p>`;
+            }
+        };
+
+        // Renders the Harmony Palette (colors + usage)
+        const renderHarmonyPalette = () => {
+            const container = document.getElementById('harmony-palette');
+            const palette = generateHarmony(state.baseColor, state.harmonyType);
+
+            container.innerHTML = palette.map((color, index) => {
+                // Determine text color for readability
+                const textColor = getLuminance(color) > 0.4 ? darkText : lightText; 
+                const role = harmonies[state.harmonyType].roles[index] || 'Акцент';
+
+                return `
+                    <div 
+                        data-color="${color}" 
+                        class="color-card rounded-2xl h-40 flex flex-col justify-end p-4 cursor-pointer relative" 
+                        style="background-color: ${color}; color: ${textColor};"
+                    >
+                        <div class="z-20">
+                            <p class="font-mono font-black text-xl drop-shadow-lg">${color.toUpperCase()}</p>
+                            <span class="role-badge" style="background: ${textColor}; color: ${color};">${role}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Attach copy listener to palette cards
+            document.querySelectorAll('#harmony-palette .color-card').forEach(card => {
+                card.addEventListener('click', (e) => {
+                    const color = e.currentTarget.getAttribute('data-color');
+                    copyToClipboard(color.toUpperCase());
+                });
+            });
+        };
+
+        // Renders the Usage Guide (60-30-10)
+        const renderUsageGuide = () => {
+            const usageContainer = document.getElementById('usage-guide');
+            const desc = document.getElementById('harmony-description');
+            const harmonyData = harmonies[state.harmonyType];
+
+            desc.textContent = harmonyData.desc + ' ' + harmonyData.usage;
+
+            const total = harmonyData.roles.length === 4 ? 100 : 100; // Total percentage
+
+            // Custom logic for 60-30-10 based on role names
+            const rolePercentages = {
+                '60% Основний': 60, '60% База': 60, '60% Домінантний': 60, '60% Середній': 60,
+                '40% Основний': 40,
+                '30% Вторинний': 30, '30% Підтримка': 30, '30% Темний': 30,
+                '25% Підтримка 1': 25,
+                '20% Третинний': 20,
+                '15% Підтримка 2': 15,
+                '10% Акцент': 10, '10% Світлий': 10,
+                '40% Контраст': 40
+            };
+
+            // Combine roles with their calculated colors
+            const palette = generateHarmony(state.baseColor, state.harmonyType);
+            
+            let html = '';
+            let currentPaletteIndex = 0;
+
+            harmonyData.roles.forEach(role => {
+                let percentage = rolePercentages[role] || 0;
+                let color = palette[currentPaletteIndex] || '#fff'; // Use color from palette
+
+                // Special handling for Tetradic/Split/Complementary where roles might be combined or exceed 4
+                if (role.includes('Підтримка 1') && state.harmonyType === 'split-complementary') {
+                    // Split Complementary: 60% Base, 25% Supp 1, 15% Supp 2. (Uses color[1] and color[2])
+                    color = palette[1];
+                } else if (role.includes('Підтримка 2') && state.harmonyType === 'split-complementary') {
+                    color = palette[2];
+                } else if (role.includes('Вторинний') && state.harmonyType === 'tetradic') {
+                    // In Tetradic, the 30% might represent the second color of the palette, but it's often described as a combination of two. We'll use the next color in the palette for visualization.
+                    color = palette[1];
+                } else if (role.includes('Третинний') && state.harmonyType === 'tetradic') {
+                    color = palette[2];
+                } else if (role.includes('Акцент') && state.harmonyType === 'tetradic') {
+                    color = palette[3];
+                } else if (role.includes('Акцент') && state.harmonyType === 'triadic') {
+                    color = palette[2];
+                } else if (role.includes('Акцент') && state.harmonyType === 'analogous') {
+                    color = palette[2];
+                } else if (role.includes('Контраст') && state.harmonyType === 'complementary') {
+                    color = palette[1];
+                } else if (role.includes('Середній') && state.harmonyType === 'monochromatic') {
+                    color = palette[0];
+                } else if (role.includes('Темний') && state.harmonyType === 'monochromatic') {
+                    color = palette[3];
+                } else if (role.includes('Світлий') && state.harmonyType === 'monochromatic') {
+                    color = palette[2];
+                } else if (currentPaletteIndex < palette.length) {
+                    color = palette[currentPaletteIndex];
+                }
+
+                if (percentage > 0) {
+                     html += `
+                        <div class="flex items-center space-x-4">
+                            <span class="font-bold text-lg w-16 text-white/90">${percentage}%</span>
+                            <div class="flex-grow">
+                                <p class="text-white font-medium">${role}</p>
+                                <div class="usage-bar">
+                                    <div class="usage-fill" style="width: ${percentage}%; background-color: ${color};"></div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Increment index only if it's a primary visual role (not split)
+                if (!role.includes('Підтримка 2') && percentage > 0) {
+                     currentPaletteIndex++;
+                }
+
+            });
+
+            usageContainer.innerHTML = html;
+        };
+
+
+        // Renders the Accessibility Panel
+        const renderAccessibility = () => {
+            const container = document.getElementById('accessibility-info');
+            const palette = generateHarmony(state.baseColor, state.harmonyType);
+            const base = state.baseColor;
+            
+            // Standard text colors for comparison
+            const white = '#FFFFFF';
+            const black = '#000000';
+            const textLuminance = getLuminance(white); // Using white text as the primary text color
+
+            let accessibilityHtml = `
+                <div class="space-y-4">
+                    <p class="text-white/80">Оцінка контрасту для забезпечення відповідності WCAG (Web Content Accessibility Guidelines).</p>
+                    <div class="p-4 rounded-xl bg-white/5 border border-white/10">
+                        <h4 class="text-white font-bold mb-3">Базовий колір (${base.toUpperCase()})</h4>
+                        <div class="grid grid-cols-2 gap-4 text-sm font-medium">
+                            ${palette.map((color, index) => {
+                                const contrastWithBase = getContrastRatio(base, color);
+                                const isAccessible = contrastWithBase >= 3.0; // AA (Large Text)
+
+                                // Find the role for this color
+                                const role = harmonies[state.harmonyType].roles[index] || 'Акцент';
+
+                                return `
+                                    <div class="p-2 rounded-lg" style="background-color: ${color};">
+                                        <p class="font-bold" style="color: ${getLuminance(color) > 0.4 ? darkText : lightText};">
+                                            ${role}
+                                        </p>
+                                        <p style="color: ${getLuminance(color) > 0.4 ? darkText : lightText};">Контраст з Базовим: ${contrastWithBase}:1</p>
+                                        <p class="font-bold ${isAccessible ? 'text-green-800' : 'text-red-800'}" style="color: ${isAccessible ? (getLuminance(color) > 0.4 ? '#059669' : '#10B981') : (getLuminance(color) > 0.4 ? '#B91C1C' : '#F87171')};">
+                                            ${isAccessible ? '✅ OK (AA-Large)' : '❌ FAIL'}
+                                        </p>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                    <div class="p-4 rounded-xl bg-white/5 border border-white/10">
+                        <h4 class="text-white font-bold mb-3">Контраст з білим текстом (#FFFFFF)</h4>
+                        <ul class="space-y-2 text-sm text-white/90">
+                            ${palette.map(color => {
+                                const contrast = getContrastRatio(color, white);
+                                const isAccessibleAA = contrast >= 4.5;
+                                const isAccessibleAAA = contrast >= 7.0;
+
+                                let status;
+                                if (isAccessibleAAA) {
+                                    status = '✅ AAA (Відмінно)';
+                                } else if (isAccessibleAA) {
+                                    status = '☑️ AA (Добре)';
+                                } else {
+                                    status = '❌ FAIL (Погано)';
+                                }
+
+                                return `
+                                    <li class="flex justify-between items-center border-b border-white/10 pb-1">
+                                        <span class="font-mono text-xs" style="color: ${color};">${color.toUpperCase()}</span>
+                                        <span class="font-semibold">${contrast}:1</span>
+                                        <span class="${isAccessibleAAA ? 'text-green-500' : (isAccessibleAA ? 'text-yellow-500' : 'text-red-500')}">${status}</span>
+                                    </li>
+                                `;
+                            }).join('')}
+                        </ul>
+                    </div>
+                </div>
+            `;
+            container.innerHTML = accessibilityHtml;
+        };
+
+
+        // Renders Psychology Info
+        const renderPsychology = () => {
+             const container = document.getElementById('psychology-info');
+             const currentItem = data[state.category].find(item => item.name === state.selectedItem);
+
+             if (currentItem) {
+                 container.innerHTML = `
+                     <p class="font-bold mb-2">${currentItem.name}: ${currentItem.desc}</p>
+                     <p>${currentItem.rationale}</p>
+                 `;
+             }
+        };
+
+        // Renders Simple Design Examples
+        const renderDesignExamples = () => {
+            const container = document.getElementById('design-examples');
+            const palette = generateHarmony(state.baseColor, state.harmonyType);
+            const baseColor = state.baseColor;
+            const accentColor = palette.length > 3 ? palette[3] : (palette.length > 1 ? palette[1] : baseColor);
+            const secondaryColor = palette.length > 1 ? palette[1] : baseColor;
+            // Removed local definitions for darkText and lightText, now using global constants.
+
+            container.innerHTML = `
+                <!-- UI Card Example -->
+                <div class="rounded-xl p-4 h-48 flex flex-col justify-between shadow-lg" style="background-color: ${secondaryColor}; color: ${getLuminance(secondaryColor) > 0.4 ? darkText : lightText};">
+                    <p class="font-bold text-xl">Вторинний Блок</p>
+                    <p class="text-sm">Контентна картка. 30% простору.</p>
+                    <button class="px-3 py-2 rounded-lg font-bold text-sm shadow-md" style="background-color: ${accentColor}; color: ${getLuminance(accentColor) > 0.4 ? darkText : lightText};">
+                        Акцентна Кнопка (10%)
+                    </button>
+                </div>
+
+                <!-- Text Highlight Example -->
+                <div class="rounded-xl p-4 h-48 flex flex-col justify-center items-center shadow-lg" style="background-color: ${baseColor}; color: ${getLuminance(baseColor) > 0.4 ? darkText : lightText};">
+                    <p class="text-3xl font-black mb-2">60%</p>
+                    <p class="text-xl">Основний фон</p>
+                    <span class="text-base" style="color: ${accentColor};">Ключове виділення тексту</span>
+                </div>
+
+                <!-- Dark UI Example -->
+                <div class="rounded-xl p-4 h-48 flex flex-col justify-center items-center shadow-lg bg-gray-900 text-white">
+                    <p class="text-3xl font-black mb-2" style="color: ${accentColor};">CTA</p>
+                    <p class="text-sm text-gray-400">Перевірка контрасту з темним фоном</p>
+                    <div class="flex space-x-2 mt-2">
+                        <span class="font-bold text-sm" style="color: ${secondaryColor};">Secondary</span>
+                        <span class="font-bold text-sm" style="color: ${baseColor};">Primary</span>
+                    </div>
+                </div>
+            `;
+        };
+
+        // Main render function
+        const renderApp = () => {
+            renderCategories();
+            renderColorItems();
+            renderHarmonyTypes();
+            renderBaseColorDisplay();
+            renderHarmonyPalette();
+            renderUsageGuide();
+            renderAccessibility();
+            renderPsychology();
+            renderDesignExamples();
+        };
+
+        // --- Event Listeners and Initial Load ---
+        document.getElementById('color-picker').addEventListener('input', (e) => {
+            setState({ baseColor: e.target.value, selectedItem: null });
+        });
+        document.getElementById('base-color-display').addEventListener('click', () => {
+            document.getElementById('color-picker').click();
+        });
+
+
+        // Initial load
+        document.addEventListener('DOMContentLoaded', renderApp);
+
+    </script>
+</body>
+</html>
